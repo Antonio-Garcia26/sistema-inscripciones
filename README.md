@@ -6,9 +6,9 @@ Aplicación web modular para la gestión de inscripciones, reinscripciones, soli
 
 | Capa | Tecnología | Detalles |
 | :--- | :--- | :--- |
-| **Backend** | Spring Boot 4.2.0 (Java 21 + Maven) | API REST modular, Spring Security (JWT + CAPTCHA), Spring Data JPA y Actuator |
+| **Backend** | Spring Boot 4.2.0 (Java 21 + Maven) | API REST modular, Spring Security (JWT + CAPTCHA + `@EnableMethodSecurity`), Spring Data JPA y Actuator |
 | **Base de Datos** | PostgreSQL 17 | Almacenamiento relacional, constraints, triggers y datos de prueba |
-| **Frontend** | React + Vite (JavaScript) | Interfaz modular con rutas protegidas por rol |
+| **Frontend** | React + Vite (JavaScript) + React Router | Interfaz modular con rutas desacopladas por módulo |
 | **Contenedores** | Docker & Docker Compose | Empaquetado y entorno local idéntico para los 8 equipos |
 | **Orquestación y Nube** | Kubernetes (`k8s`) + Microsoft Azure | Despliegue final en máquina virtual con contenedores orquestados |
 
@@ -20,12 +20,12 @@ Para evitar conflictos entre los 8 equipos trabajando al mismo tiempo, **cada eq
 
 | Equipo | Rama de Git | Carpetas Asignadas | Responsabilidad |
 | :---: | :--- | :--- | :--- |
-| **1** | `equipo-1-infra-auth` | `backend/.../common/`, `backend/.../auth/`, `frontend/src/api/`, `frontend/src/shared/`, `frontend/src/modules/auth/`, `k8s/`, archivos raíz | Infraestructura (Docker, k8s, Azure), config, CORS, manejo de errores, DTOs base, login, CAPTCHA, JWT, roles, `SecurityFilterChain`, cliente HTTP base y layout/rutas protegidas |
+| **1** | `equipo-1-infra-auth` | `backend/.../common/`, `backend/.../auth/`, `frontend/src/api/`, `frontend/src/shared/`, `frontend/src/modules/auth/`, `k8s/`, archivos raíz | Infraestructura (Docker, k8s, Azure), config, CORS, manejo de errores, DTOs base, login, CAPTCHA, JWT, roles, `SecurityConfig`, cliente HTTP base y layout/rutas protegidas |
 | **2** | `equipo-2-alumnos` | `backend/.../alumnos/`, `frontend/src/modules/portal-alumno/` | Portal del alumno: perfil, kárdex, consulta de cita, oferta y armar horario |
 | **3** | `equipo-3-reinscripcion` | `backend/.../reinscripcion/`, `frontend/src/modules/reinscripcion/` | Reinscripción: ventana de 20 min, agregar/quitar materias y validaciones |
 | **4** | `equipo-4-solicitudes` | `backend/.../solicitudes/`, `frontend/src/modules/solicitudes/`, `frontend/src/modules/coordinacion/` | Solicitudes y coordinación: orden de pago, referencias, factura, casos críticos y atención de casos críticos por el coordinador |
 | **5** | `equipo-5-pagos` | `backend/.../pagos/`, `frontend/src/modules/pagos/` | Pagos: adeudos, conciliación, recibo y estados de pago |
-| **6** | `equipo-6-academico-bd` | `db/init/`, `db/seed/`, `db/docs/`, `backend/.../academico/` | Base de datos y módulo académico: esquema SQL, datos de prueba, diccionario de datos, carreras, materias, grupos, horarios y citas |
+| **6** | `equipo-6-academico-bd` | `db/init/`, `db/seed/`, `db/docs/`, `backend/.../academico/` | Base de datos y módulo académico: esquema SQL, entidades compartidas, datos de prueba, diccionario de datos, carreras, materias, grupos, horarios y citas |
 | **7** | `equipo-7-reportes` | `backend/.../reportes/`, `frontend/src/modules/reportes/` | Reportes: consultas de reportes, tablero y exportación |
 | **8** | `equipo-8-notificaciones` | `backend/.../notificaciones/`, `frontend/src/modules/notificaciones/` | Notificaciones: correos, comprobante PDF, avisos y descarga de comprobantes |
 
@@ -40,13 +40,13 @@ sistema-inscripciones/
 │   ├── pom.xml / mvnw / mvnw.cmd
 │   └── src/main/
 │       ├── java/com/nube/inscripciones/
-│       │   ├── common/          # Equipo 1 (config, CORS, manejo de errores, DTOs base)
-│       │   ├── auth/            # Equipo 1 (login, CAPTCHA, JWT, roles, SecurityFilterChain)
+│       │   ├── common/          # Equipo 1 (config, manejo de errores, DTOs base)
+│       │   ├── auth/            # Equipo 1 (SecurityConfig ya activo, login, CAPTCHA, JWT)
 │       │   ├── alumnos/         # Equipo 2
 │       │   ├── reinscripcion/   # Equipo 3
 │       │   ├── solicitudes/     # Equipo 4
 │       │   ├── pagos/           # Equipo 5
-│       │   ├── academico/       # Equipo 6
+│       │   ├── academico/       # Equipo 6 (incluye entity/ con entidades compartidas)
 │       │   ├── reportes/        # Equipo 7
 │       │   └── notificaciones/  # Equipo 8
 │       │       # Sugerencia dentro de cada módulo:
@@ -59,22 +59,23 @@ sistema-inscripciones/
 │   └── docs/                    # Equipo 6: diagrama ER y diccionario de datos
 ├── frontend/
 │   ├── Dockerfile
-│   ├── nginx.conf
+│   ├── nginx.conf               # Sirve React y redirige /api/ → backend:8080
 │   ├── package.json / vite.config.js
 │   └── src/
-│       ├── api/                 # Equipo 1 (fetch base con token y VITE_API_URL)
+│       ├── App.jsx              # Ya conectado a los routes.jsx de todos los módulos
+│       ├── api/client.js        # Equipo 1 (apiFetch con token y VITE_API_URL ya listo)
 │       ├── shared/              # Equipo 1 (layout, componentes comunes, rutas protegidas)
 │       └── modules/
-│           ├── auth/            # Equipo 1
-│           ├── portal-alumno/   # Equipo 2
-│           ├── reinscripcion/   # Equipo 3
-│           ├── solicitudes/     # Equipo 4
-│           ├── coordinacion/    # Equipo 4
-│           ├── pagos/           # Equipo 5
-│           ├── reportes/        # Equipo 7
-│           └── notificaciones/  # Equipo 8
+│           ├── auth/            # Equipo 1 (incluye routes.jsx)
+│           ├── portal-alumno/   # Equipo 2 (incluye routes.jsx)
+│           ├── reinscripcion/   # Equipo 3 (incluye routes.jsx)
+│           ├── solicitudes/     # Equipo 4 (incluye routes.jsx)
+│           ├── coordinacion/    # Equipo 4 (incluye routes.jsx)
+│           ├── pagos/           # Equipo 5 (incluye routes.jsx)
+│           ├── reportes/        # Equipo 7 (incluye routes.jsx)
+│           └── notificaciones/  # Equipo 8 (incluye routes.jsx)
 │               # Sugerencia dentro de cada módulo:
-│               # pages/  components/  services/
+│               # routes.jsx  pages/  components/  services/
 ├── k8s/                         # Equipo 1 (manifiestos YAML de Kubernetes)
 ├── docs/
 │   └── api/                     # Contratos de endpoints acordados entre equipos
@@ -131,8 +132,8 @@ cp .env.example .env
    docker compose ps
    ```
    Deberías ver los 3 contenedores (`inscripciones_db`, `inscripciones_backend`, `inscripciones_frontend`) con estado `Up`.
-   - Frontend: `http://localhost:5173`
-   - Backend: `http://localhost:8080`
+   - Frontend: `http://localhost:5173` *(redirige a `/login` y las rutas base de cada módulo ya están activas)*
+   - Backend (health check): `http://localhost:8080/actuator/health` *(debe responder `{"status":"UP"}`)*
    - Para apagarlos: `docker compose down`
 
 ---
@@ -150,7 +151,9 @@ Las variables del archivo `.env` permiten que el código funcione en cualquier l
 | `BACKEND_PORT` | `8080` | Puerto donde escucha la API de Spring Boot |
 | `JWT_SECRET` | *(cadena de +32 caracteres)* | Llave secreta para firmar tokens de sesión en Spring Security |
 | `CORS_ALLOWED_ORIGINS` | `http://localhost:5173` | Dirección del frontend autorizada a hacer peticiones al backend |
-| `VITE_API_URL` | `http://localhost:8080` | URL base del backend que consume React |
+| `VITE_API_URL` | `http://localhost:8080/api` | URL base de la API que consume React |
+
+> **Nota para Equipo 1 (`VITE_API_URL` en producción):** En Vite, el valor de `VITE_API_URL` queda incrustado dentro de los archivos estáticos al construir la imagen (`docker build`). Si se compila con el valor local, en Azure apuntaría a `localhost`. Para el despliegue en producción se debe compilar la imagen usando **`VITE_API_URL=/api`** como ruta relativa; `frontend/nginx.conf` (y el **Ingress** de Kubernetes) ya redirige `/api/` hacia el servicio del backend.
 
 ---
 
@@ -175,12 +178,16 @@ docker compose down -v
 docker compose up -d db
 ```
      *(La bandera `-v` borra los datos viejos para que Postgres vuelva a correr los scripts).*
-4. **Entregable clave del Equipo 6:** Publicar el diagrama ER y el diccionario de datos en `db/docs/` con los nombres exactos de tablas, columnas y roles para que los demás equipos programen sus entidades sin errores.
+4. **Entregable clave del Equipo 6:** Publicar el diagrama ER y el diccionario de datos en `db/docs/` con los nombres exactos de tablas, columnas y roles para que los demás equipos programen sus módulos sin errores.
+
+> **Notas importantes sobre `db/init/` (Reglas para el Equipo 6):**
+> - **Aviso al grupo:** Siempre que modifiquen un script en `db/init/`, deben avisar en el grupo, ya que todos los equipos tendrán que correr `docker compose down -v` y perderán sus datos locales.
+> - **Congelamiento antes de producción:** En la VM de Azure, aplicar cambios en `db/init/` implica borrar el volumen de PostgreSQL; por lo tanto, **el esquema de base de datos debe quedar congelado antes del despliegue final**.
 
 ---
 
 ### B. Backend — Spring Boot (Cada equipo en su módulo dentro de `backend/`)
-El proyecto ya está inicializado con **Spring Boot 4.2.0, Java 21, Maven** y las dependencias base (`Spring Web`, `Spring Security`, `Spring Data JPA`, `PostgreSQL Driver` y `Spring Boot Actuator`).
+El proyecto ya está configurado con **Spring Boot 4.2.0, Java 21, Maven** y **`SecurityConfig.java` activo** (`@EnableMethodSecurity`, CORS configurado desde `.env` y `/actuator/health` público).
 
 1. Levanta solo la base de datos en Docker:
    ```bash
@@ -197,19 +204,24 @@ cd backend
 cd backend
 ./mvnw spring-boot:run
 ```
-3. **Reglas obligatorias (para que no falle en Docker ni en Azure):**
-   - **Nunca escriban contraseñas ni `localhost` fijos en el código Java.** Usen las variables configuradas en `application.properties` (`${SPRING_DATASOURCE_URL}`, `${JWT_SECRET}`, `${CORS_ALLOWED_ORIGINS}`).
+3. **Reglas obligatorias:**
+   - **Prefijo `/api` en todos los controllers:** Todos los endpoints deben empezar con `/api/` (ej. `@RequestMapping("/api/alumnos")`, `@RequestMapping("/api/pagos")`) para que funcione el proxy de Nginx/Ingress en producción.
+   - **Permisos por módulo (`@PreAuthorize`):** `@EnableMethodSecurity` ya está activo en `SecurityConfig.java`. Mientras el Equipo 1 termina el filtro JWT, `SecurityConfig` permite probar endpoints sin bloqueo; en cuanto JWT esté en `main`, cada equipo protege sus endpoints directamente en sus controllers con `@PreAuthorize("hasRole('COORDINADOR')")` (o el rol correspondiente), sin tener que editar `SecurityFilterChain`.
+   - **Nunca escriban contraseñas ni `localhost` fijos en Java.** Usen las variables configuradas en `application.properties`.
    - **Mantengan `spring.jpa.hibernate.ddl-auto=none`** (o `validate`) para respetar el esquema SQL del Equipo 6.
-   - **Endpoint de salud y CORS (Equipo 1):** Mantener `/actuator/health` público en `SecurityFilterChain` y habilitar CORS para `CORS_ALLOWED_ORIGINS` con los métodos `GET, POST, PUT, DELETE, OPTIONS` y los headers `Authorization, Content-Type`.
-   - **Prueben que su código compila en Docker antes de subir a `main`:**
+   - **Prueben que compila en Docker antes de subir a `main`:**
 ```bash
 docker compose up --build -d db backend
 docker compose logs -f backend
 ```
 
+> **Nota sobre entidades compartidas (`@Entity`):** Tablas como `alumnos`, `grupos` o `periodos` serán usadas por 4 o 5 módulos distintos. Para evitar que varios equipos creen su propia clase `@Entity Alumno` y provoquen colisiones en JPA/Hibernate, **las entidades de tablas compartidas viven exclusivamente en `backend/src/main/java/com/nube/inscripciones/academico/entity/` (Equipo 6)**, y los demás módulos las importan sin duplicarlas.
+
 ---
 
 ### C. Frontend — React + Vite (Cada equipo en su módulo dentro de `frontend/src/modules/`)
+`react-router-dom`, `App.jsx`, el cliente HTTP `src/api/client.js` y el archivo `routes.jsx` de cada módulo **ya están creados y conectados**.
+
 1. Cuando necesites probar contra el backend real, levanta BD y Backend en Docker (o corre Spring en otra terminal):
    ```bash
    docker compose up --build -d db backend
@@ -222,14 +234,22 @@ docker compose logs -f backend
    ```
 3. Abre `http://localhost:5173`.
 4. **Reglas obligatorias:**
-   - **Usen el cliente HTTP compartido (`frontend/src/api/client.js`) o `import.meta.env.VITE_API_URL`**; nunca escriban `http://localhost:8080` fijo dentro de cada archivo.
-   - **No borren `frontend/Dockerfile` ni `frontend/nginx.conf`.**
-   - **Verifiquen que `npm run build` pase sin errores** antes de mezclar a `main`.
+   - **Agrega tus pantallas solo en el `routes.jsx` de tu módulo:** Edita únicamente `frontend/src/modules/<tu-modulo>/routes.jsx` para registrar tus páginas; no es necesario tocar `App.jsx`.
+   - **Usa el cliente compartido `apiFetch` (`frontend/src/api/client.js`):** Adjunta automáticamente el token JWT y la URL base (`VITE_API_URL`). Como la URL base ya incluye `/api`, pasa solo la ruta relativa del recurso:
+```javascript
+import { apiFetch } from "../../../api/client";
+
+// Llama a http://localhost:8080/api/alumnos en local y a /api/alumnos en Azure
+const data = await apiFetch("/alumnos");
+```
+     Nunca escribas `http://localhost:8080` fijo dentro de tus componentes.
+   - **No borres `frontend/Dockerfile` ni `frontend/nginx.conf`.**
+   - **Verifica que `npm run build` pase sin errores** antes de mezclar a `main`.
 
 ---
 
 ### D. Archivos Compartidos (Regla para evitar conflictos entre los 8 equipos)
-Para que 8 equipos no se sobrescriban entre sí, **solo el Equipo 1 edita directamente los siguientes archivos**. Si tu equipo necesita agregar una librería en `pom.xml` o `package.json`, una nueva variable en `.env.example`, una ruta en `App.jsx` o un permiso en `SecurityFilterChain`, avisa al Equipo 1 en el grupo:
+Gracias a los `routes.jsx` por módulo y a `@PreAuthorize` en los controllers, los equipos pueden agregar pantallas y reglas de acceso sin depender del Equipo 1. Únicamente los siguientes archivos base quedan bajo control del **Equipo 1** (si necesitas agregar una librería en `pom.xml` o `package.json`, una nueva variable en `.env.example`, o un ajuste global de infraestructura, avisa al Equipo 1 en el grupo):
 - `backend/pom.xml` y `backend/src/main/resources/application.properties`
 - `frontend/package.json` y `frontend/src/App.jsx`
 - `docker-compose.yml`, `.env.example`, `backend/Dockerfile`, `frontend/Dockerfile` y `frontend/nginx.conf`
@@ -283,7 +303,7 @@ git checkout <rama-de-tu-equipo>
 | Ver qué contenedores están corriendo | `docker compose ps` |
 | Ver los errores/logs del backend en vivo | `docker compose logs -f backend` |
 | Ver los logs de PostgreSQL | `docker compose logs -f db` |
-| Apagar los contenedores (guardando datos de la BD) | `docker compose down` |
+| Apagar los contenedores (guardando datos de BD) | `docker compose down` |
 | Apagar todo y **borrar la BD para recargar `db/init/`** | `docker compose down -v` |
 
 ---
@@ -297,14 +317,14 @@ git checkout <rama-de-tu-equipo>
   - *Causa:* Docker conservó el volumen viejo de PostgreSQL.
   - *Solución:* Ejecuta `docker compose down -v` y vuelve a correr `docker compose up -d db`.
 - **El navegador bloquea las peticiones de React al Backend (Error de CORS)**
-  - *Causa:* Spring Security está rechazando peticiones desde `http://localhost:5173`.
-  - *Solución:* El Equipo 1 debe habilitar CORS en `SecurityFilterChain` permitiendo `http://localhost:5173` y el método `OPTIONS`.
+  - *Causa:* La URL del frontend no coincide con `CORS_ALLOWED_ORIGINS` en `.env`.
+  - *Solución:* Verifica que `.env` tenga `CORS_ALLOWED_ORIGINS=http://localhost:5173` y reinicia el backend.
 - **Spring Boot se cierra al iniciar con un error sobre `JWT_SECRET`**
   - *Causa:* La llave secreta en `.env` es muy corta o no existe el archivo `.env`.
   - *Solución:* Verifica que creaste `.env` desde `.env.example` y que `JWT_SECRET` tenga al menos 32 caracteres.
 - **`Cannot connect to the Docker daemon`**
   - *Causa:* Docker Desktop está cerrado.
-  - *Solución:* Abre Docker Desktop, espera a que diga *Engine running* y vuelve a correr el comando.
-- **Mis cambios en `backend/` o `frontend/` no se reflejan dentro de Docker**
+  - *Solución:* Abre la aplicación Docker Desktop, espera a que diga *Engine running* y vuelve a correr el comando.
+- **Al hacer cambios en `backend/` o `frontend/` no se reflejan dentro de Docker**
   - *Causa:* `docker compose up` reutiliza la imagen anterior si no le pides reconstruir.
   - *Solución:* Agrega `--build`: `docker compose up --build -d`.
